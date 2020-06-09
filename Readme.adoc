@@ -88,6 +88,9 @@ NOTE: Çıktılar varsayılan olarak *models_tool/retinanet/outputs* içerisinde
 [ 1 ] *install_retinanet.sh, build_dataset.py, predict.py* dosyaları verilen kaynaktan alınarak bu proje için düzenlemeler yapılarak kullanılmıştır. 
 https://github.com/kapil-varshney/esri_retinanet[,role=external,window=_blank]
 
+[ 2 ] retinanet implementasyonu kaynak dosyaları *fizyr keras-retinanet* deposundan alınarak, bu proje için düzenlemeler yapılarak kullanılmıştır. 
+https://github.com/fizyr/keras-retinanet[,role=external,window=_blank]
+
 
 
 
