@@ -3,7 +3,7 @@
 === Retinanet
 
 ==== Kurulum:
-. https://github.com/tvsai/models_tool/tree/retinanetTool branch’ın
+. https://github.com/EmreKARAgh/object_detection_tool deposunun
 içeriği indirilir.
 
 . Anaconda prompt terminatorü açılarak yeni bir environment oluşturulur
@@ -23,14 +23,11 @@ NOTE: Bu dökümanın kalanında bu klasörden *models_tool* olarak bahsedilecek
 . https://github.com/fizyr/keras-retinanet/releases/download/0.5.1/resnet50_coco_best_v2.1.0.h5
 adresine tıklayarak ilgili dosya indirilip. *models_tool/retinanet* klasörü içerisine konur.
 
-. Gerekli kütüphaneler kurulur.
-(retinanet/keras_retinanet/requirements.txt retinanet ile ilgili olanlar yer
-almaktadır.) 
+. *install_retinanet.sh* dosyası çalıştırılır. (komut satırından direkt çağırılarak çalıştırılabilir.) <<ref1,[1]>>
+
+. Gerekli ek kütüphaneler kurulur.
 
 NOTE: tensorflow >= 2 sürümü sorunlar yaratabilir.
-
-[start=6]
-. *install_retinanet.sh* dosyası çalıştırılır. (komut satırından direkt çağırılarak çalıştırılabilir.) <<ref1,[1]>>
 
 ==== Veri Hazırlama:
 
