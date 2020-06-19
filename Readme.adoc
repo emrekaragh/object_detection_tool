@@ -1,0 +1,33 @@
+== Object Detection Tool
+
+Bu proje farklı object detection ve object segmentation modellerini bir araya getirip ortak bir arayüzden hızlı ve kolay kullanılabilir olmasını sağlamayı amaçlamaktadır. 
+
+Tool'un ilk aşamada:
+
+. Retinanet
+. Mask RCNN
+. SSD
+
+modellerini kapsaması planlanmaktadır.
+
+Bu üç model tamamlanana kadar her model kendine ait branchına eklenip tool tamamlanınca birleştirilecektir.
+
+Kurulum ve kullanım ayrıntılarına dökümanlarda yer verilmiştir.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
