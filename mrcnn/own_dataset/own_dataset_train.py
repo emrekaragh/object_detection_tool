@@ -1,0 +1,375 @@
+import os
+import sys
+
+
+ROOT_DIR = os.path.abspath(__file__ + "/../../")
+
+# Import Mask RCNN
+sys.path.append(ROOT_DIR)  # To find local version of the library
+
+
+import numpy as np
+from numpy import zeros
+from numpy import asarray
+import colorsys
+import argparse
+import imutils
+import random
+import cv2
+import os
+import time
+from matplotlib import pyplot
+from matplotlib.patches import Rectangle
+from keras.models import load_model
+from os import listdir
+from xml.etree import ElementTree
+import datetime
+import numpy as np
+import skimage.draw
+from bs4 import BeautifulSoup
+
+from own_config import Config
+from mrcnn import model as modellib
+from mrcnn import visualize
+import mrcnn
+from mrcnn import model as modellib, utils
+from mrcnn.model import MaskRCNN
+
+# Path to trained weights file
+COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
+
+# Directory to save logs and model checkpoints, if not provided
+# through the command line argument --logs
+DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
+
+class OwnDatasetConfig(Config):
+    NAME = "OwnDataset"
+class OwnDataset(utils.Dataset):
+    def load_dataset(self, dataset_dir, subset):
+        # adding all unique classes which in our dataset
+        self.add_all_classes(dataset_dir)
+        
+        assert subset in ["train", "test"]
+        dataset_dir = os.path.join(dataset_dir, subset)
+        
+        print('dataset_dir:', dataset_dir)
+        
+        #set images an annotations paths
+        images_dir = os.path.join(dataset_dir, 'images/')
+        annotations_dir = os.path.join(dataset_dir, 'annotations/')
+        
+        #Iterate through all files in the folder
+        for filename in listdir(images_dir):
+            # extract image id
+            image_id = filename[:-4]
+            
+            # setting image file
+            img_path = images_dir + filename
+            # setting annotations file
+            ann_path = annotations_dir + image_id + '.xml'
+            
+            self.add_image('own_dataset', image_id=image_id, path=img_path, annotation=ann_path)
+    def add_all_classes(self, dataset_dir):
+        csv_path = os.path.join(dataset_dir, "train/mrcnn_classes.csv")
+        from csv import reader
+        with open(csv_path, 'r') as read_obj:
+            csv_reader = reader(read_obj)
+            for row in csv_reader:
+                self.add_class('own_dataset', (int(row[1]) + 1), row[0]) #(int(row[1]) + 1) 0. index reserverd for BG class (I Think!)
+                
+        # self.add_class("own_dataset", 1, "Labrador_retriever")
+        # self.add_class("own_dataset", 2, "Rottweiler")
+        # self.add_class("own_dataset", 3, "German_shepherd")
+        # self.add_class("own_dataset", 4, "French_bulldog")
+        # self.add_class("own_dataset", 5, "Siberian_husky")
+        # self.add_class("own_dataset", 6, "Samoyed")
+        
+        # self.add_class("own_dataset", 0, "Siberian_husky")
+        # self.add_class("own_dataset", 1, "German_shepherd")
+        # self.add_class("own_dataset", 2, "golden_retriever")
+        # self.add_class("own_dataset", 3, "Irish_wolfhound")
+        # self.add_class("own_dataset", 4, "standard_poodle")
+        # self.add_class("own_dataset", 5, "Mexican_hairless")
+        # self.add_class("own_dataset", 6, "Afghan_hound")
+        # self.add_class("own_dataset", 7, "African_hunting_dog")
+    def extract_boxes(self, filename):
+        
+        
+        boxes = list()
+        contents = open(filename).read()
+        soup = BeautifulSoup(contents, "html.parser")
+
+        # extract the image dimensions
+        width = int(soup.find("width").string)
+        height = int(soup.find("height").string)
+
+        # loop over all object elements
+        for o in soup.find_all("object"):
+            #extract the label and bounding box coordinates
+            label = o.find("name").string
+            xMin = int(float(o.find("xmin").string))
+            yMin = int(float(o.find("ymin").string))
+            xMax = int(float(o.find("xmax").string))
+            yMax = int(float(o.find("ymax").string))
+
+            # truncate any bounding box coordinates that fall outside
+            # the boundaries of the image
+            xMin = max(0, xMin)
+            yMin = max(0, yMin)
+            xMax = min(width, xMax)
+            yMax = min(height, yMax)
+
+            # ignore the bounding boxes where the minimum values are larger
+            # than the maximum values and vice-versa due to annotation errors
+            if xMin >= xMax or yMin >= yMax:
+                continue
+            elif xMax <= xMin or yMax <= yMin:
+                continue
+            coors = [xMin, yMin, xMax, yMax, label]
+            boxes.append(coors)
+        return boxes, width, height
+    def load_mask(self, image_id):
+        
+        # get details of image
+        info = self.image_info[image_id]
+        
+        # define anntation  file location
+        path = info['annotation']
+        
+        # load XML
+        boxes, w, h = self.extract_boxes(path)
+       
+        # create one array for all masks, each on a different channel
+        masks = zeros([h, w, len(boxes)], dtype='uint8')
+        
+        # create masks
+        class_ids = list()
+        for i in range(len(boxes)):
+            box = boxes[i]
+            row_s, row_e = box[1], box[3]
+            col_s, col_e = box[0], box[2]
+            masks[row_s:row_e, col_s:col_e, i] = 1
+            class_ids.append(self.class_names.index(box[4]))
+        return masks, asarray(class_ids, dtype='int32')
+    def image_reference(self, image_id):
+        info = self.image_info[image_id]
+        return info['path']
+
+def train(model):
+    """Train the model."""
+    # Training dataset.
+    dataset_train = OwnDataset()
+    dataset_train.load_dataset(args.dataset, "train")
+    dataset_train.prepare()
+
+    # Validation dataset
+    dataset_test = OwnDataset()
+    dataset_test.load_dataset(args.dataset, "test")
+    dataset_test.prepare()
+
+    # *** This training schedule is an example. Update to your needs ***
+    # Since we're using a very small dataset, and starting from
+    # COCO trained weights, we don't need to train too long. Also,
+    # no need to train all layers, just the heads should do it.
+    print("Training network heads")
+    model.train(dataset_train, dataset_test,
+                learning_rate=config.LEARNING_RATE,
+                epochs=1,
+                layers='heads')
+def color_splash(image, mask):
+    """Apply color splash effect.
+    image: RGB image [height, width, 3]
+    mask: instance segmentation mask [height, width, instance count]
+
+    Returns result image.
+    """
+    # Make a grayscale copy of the image. The grayscale copy still
+    # has 3 RGB channels, though.
+    gray = skimage.color.gray2rgb(skimage.color.rgb2gray(image)) * 255
+    # Copy color pixels from the original color image where mask is set
+    if mask.shape[-1] > 0:
+        # We're treating all instances as one, so collapse the mask into one layer
+        mask = (np.sum(mask, -1, keepdims=True) >= 1)
+        splash = np.where(mask, image, gray).astype(np.uint8)
+    else:
+        splash = gray.astype(np.uint8)
+    return splash
+
+
+def detect_and_color_splash(model, image_path=None, video_path=None):
+    assert image_path or video_path
+
+    # Image or video?
+    if image_path:
+        # Run model detection and generate the color splash effect
+        print("Running on {}".format(args.image))
+        # Read image
+        image = skimage.io.imread(args.image)
+        # Detect objects
+        r = model.detect([image], verbose=1)[0]
+        # Color splash
+        splash = color_splash(image, r['masks'])
+        # Save output
+        file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
+        skimage.io.imsave(file_name, splash)
+    elif video_path:
+        import cv2
+        # Video capture
+        vcapture = cv2.VideoCapture(video_path)
+        width = int(vcapture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(vcapture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = vcapture.get(cv2.CAP_PROP_FPS)
+
+        # Define codec and create video writer
+        file_name = "splash_{:%Y%m%dT%H%M%S}.avi".format(datetime.datetime.now())
+        vwriter = cv2.VideoWriter(file_name,
+                                  cv2.VideoWriter_fourcc(*'MJPG'),
+                                  fps, (width, height))
+
+        count = 0
+        success = True
+        while success:
+            print("frame: ", count)
+            # Read next image
+            success, image = vcapture.read()
+            if success:
+                # OpenCV returns images as BGR, convert to RGB
+                image = image[..., ::-1]
+                # Detect objects
+                r = model.detect([image], verbose=0)[0]
+                # Color splash
+                splash = color_splash(image, r['masks'])
+                # RGB -> BGR to save image to video
+                splash = splash[..., ::-1]
+                # Add image to video writer
+                vwriter.write(splash)
+                count += 1
+        vwriter.release()
+    print("Saved to ", file_name)
+    
+
+if __name__ == '__main__':
+    import argparse
+
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description='Train Mask R-CNN to detect your Own Dataset.')
+    parser.add_argument("command",
+                        metavar="<command>",
+                        help="'train' or 'splash'")
+    parser.add_argument('--dataset', required=False,
+                        metavar="/path/to/your/dataset/",
+                        help='Directory of the Your dataset. Should includes images,annotations folders and mrcnn_num_classes.txt(its should includes count of distinct class in your dataset)')
+    parser.add_argument('--weights', required=True,
+                        metavar="/path/to/weights.h5",
+                        help="Path to weights .h5 file or 'coco'")
+    parser.add_argument('--logs', required=False,
+                        default=DEFAULT_LOGS_DIR,
+                        metavar="/path/to/logs/",
+                        help='Logs and checkpoints directory (default=logs/)')
+    parser.add_argument('--image', required=False,
+                        metavar="path or URL to image",
+                        help='Image to apply the color splash effect on')
+    parser.add_argument('--video', required=False,
+                        metavar="path or URL to video",
+                        help='Video to apply the color splash effect on')
+    args = parser.parse_args()
+
+    # Validate arguments
+    if args.command == "train":
+        assert args.dataset, "Argument --dataset is required for training"
+    elif args.command == "splash":
+        assert args.image or args.video,\
+               "Provide --image or --video to apply color splash"
+               
+    num_classes_from_dataset = 0
+    try:
+        f = open(os.path.join(args.dataset, ('train/mrcnn_num_classes.txt')), "r")
+        num_classes_from_dataset = int(f.read()) +1  # +1 is for Back Ground
+        f.close()
+        OwnDatasetConfig.NUM_CLASSES = num_classes_from_dataset
+    except:
+        print('Please run build_dataset to create num_classes.txt')
+        sys.exit()
+               
+    print("Weights: ", args.weights)
+    print("Dataset: ", args.dataset)
+    print("Logs: ", args.logs)
+    
+
+    # Configurations
+    if args.command == "train":
+        config = OwnDatasetConfig()
+    else:
+        class InferenceConfig(OwnDatasetConfig()):
+            # Set batch size to 1 since we'll be running inference on
+            # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
+            GPU_COUNT = 1
+            IMAGES_PER_GPU = 1
+        config = InferenceConfig()
+    config.display()
+
+    # Create model
+    if args.command == "train":
+        model = modellib.MaskRCNN(mode="training", config=config,
+                                  model_dir=args.logs)
+    else:
+        model = modellib.MaskRCNN(mode="inference", config=config,
+                                  model_dir=args.logs)
+
+    # Select weights file to load
+    if args.weights.lower() == "coco":
+        weights_path = COCO_WEIGHTS_PATH
+        # Download weights file
+        if not os.path.exists(weights_path):
+            utils.download_trained_weights(weights_path)
+    elif args.weights.lower() == "last":
+        # Find last trained weights
+        weights_path = model.find_last()
+    elif args.weights.lower() == "imagenet":
+        # Start from ImageNet trained weights
+        weights_path = model.get_imagenet_weights()
+    else:
+        weights_path = args.weights
+
+    # Load weights
+    print("Loading weights ", weights_path)
+    if args.weights.lower() == "coco":
+        # Exclude the last layers because they require a matching
+        # number of classes
+        model.load_weights(weights_path, by_name=True, exclude=[
+            "mrcnn_class_logits", "mrcnn_bbox_fc",
+            "mrcnn_bbox", "mrcnn_mask"])
+    else:
+        model.load_weights(weights_path, by_name=True)
+
+    # Train or evaluate
+    if args.command == "train":
+        train(model)
+    elif args.command == "splash":
+        detect_and_color_splash(model, image_path=args.image,
+                                video_path=args.video)
+    else:
+        print("'{}' is not recognized. "
+              "Use 'train' or 'splash'".format(args.command))
+        
+    
+    #For prediction
+    num_classes_path = os.path.join(model.log_dir, "num_classes.txt")
+    num_classes = open(num_classes_path, "w")
+    num_classes.write(str(num_classes_from_dataset - 1)) # -1 is Back Ground Class
+    num_classes.close()
+# config = DogBreedsConfig()
+# dataset = DogBreedsDataset()
+# dataset.load_dogBreeds(DATA_DIR, "train")
+# dataset.prepare()
+
+# print("Image Count: {}".format(len(dataset.image_ids)))
+# print("Class Count: {}".format(dataset.num_classes))
+# for i, info in enumerate(dataset.class_info):
+#     print("{:3}. {:50}".format(i, info['name']))
+# image_ids = np.random.choice(dataset.image_ids, 4)
+# for image_id in image_ids:
+#     image = dataset.load_image(image_id)
+#     mask, class_ids = dataset.load_mask(image_id)
+# config.display()

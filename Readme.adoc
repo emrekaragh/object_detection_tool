@@ -1,0 +1,80 @@
+== Object Detection Tool
+
+=== Mask R-CNN
+
+==== Kurulum:
+. https://github.com/EmreKARAgh/object_detection_tool/tree/mrcnnTool branch’ın
+içeriği indirilir.
+
+. Anaconda prompt terminatorü açılarak yeni bir environment oluşturulur
+ve aktive edilir.
+.. https://docs.conda.io/projects/conda/en/latest/userguide/tasks/manage-environments.html#creating-anenvironment-with-commands
+
+NOTE: Environment'ı *python >= 3.6* bir sürüm ile oluşturmalısınız.
+
+[start=3]
+. Anaconda prompt terminatorü içerisinden içeriğin indirilen klasörün
+içerisine gidilir. (*object_detection.py* ile aynı konumda olmalısınız). 
+
+NOTE: Bu dökümanın kalanında bu klasörden *models_tool* olarak bahsedilecektir.
+
+[start=4]
+
+. *install_mrcnn.sh* dosyası çalıştırılır. (komut satırından direkt çağırılarak çalıştırılabilir.)
+
+NOTE: tensorflow-gpu=1.15.3 versiyonunu kullanır. Tool içerisinde kullanılan mask rcnn implementasyonu <<ref1,[1]>> tensorflow-gpu>2 versiyonları ile uyumlu değildir 
+
+
+==== Veri Hazırlama:
+
+. Veriler -öncelikle train ve test olmak üzere 2 gruba ayırılabilir.
+. Her iki grup için de images, annotations klasörleri oluşturulmalıdır.(test
+için ilk aşamada annotations klasörü boş kalabilir.)
+.. *images:* Görüntülerin herhangi bir klasör içinde olmadan direkt yer aldığı klasördür. 
+.. *annotation:* Pascal VOC formatında Annotation XML'lerinin,   herhangi bir klasör içinde olmadan direkt yer aldığı klasördür. 
+. *models_tool/dataset* içerisindeki yapıya uygun olarak klasörler
+yerleştirilir.
+. *models_tool* klasörüne gidilirerek verilen komut çalıştırılır:
+`python object_detection.py mrcnn build_dataset`
+
+
+==== Train:
+
+. *models_tool* klasörüne gidilir. 
+
+. Eğitimi başlatmak için gerekli komut: 
+`python object_detection.py mrcnn train`
+
+
+
+==== Prediction:
+
+. *models_tool* klasörüne gidilir.
+
+. Prediction gerçekleştirmek için gerekli komut:
+`python object_detection.py mrcnn predict`
+
+NOTE: Çıktılar varsayılan olarak *models_tool/mrcnn/outputs* içerisinde yer alır.
+
+==== References
+
+[[ref1]]
+[ 1 ] Mask R-CNN implementasyonu kaynak dosyaları *matterport/Mask_RCNN* deposundan alınarak, bu proje için düzenlemeler yapılarak kullanılmıştır. 
+https://github.com/matterport/Mask_RCNN[,role=external,window=blank]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
