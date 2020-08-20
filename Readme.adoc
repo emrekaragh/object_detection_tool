@@ -1,23 +1,121 @@
-== Object Detection Tool
+= Models Tool
 
-Bu proje farklı object detection ve object segmentation modellerini bir araya getirip ortak bir arayüzden hızlı ve kolay kullanılabilir olmasını sağlamayı amaçlamaktadır. 
+Models tool aşağıda yer alan Object Detection modellerini kapsamayı hedefleyen, terminal komutları ile çalıştırılabilir, Python ile geliştirilmiş bir tooldur.
 
-Tool'un ilk aşamada:
+=== Modeller
 
 . Retinanet
-. Mask RCNN
+. M-RCNN
 . SSD
 
-modellerini kapsaması planlanmaktadır.
+Bu dokümanda tool'un kurulumundan ve kullanımından bahsedilecektir.
 
-Bu üç model tamamlanana kadar her model kendine ait branchına eklenip tool tamamlanınca birleştirilecektir.
+==== Kurulum:
+. https://github.com/tvsai/models_tool/tree/merging_all_models branch’ın
+içeriği indirilir.
 
-Kurulum ve kullanım ayrıntılarına dökümanlarda yer verilmiştir.
+. Anaconda prompt terminatorü açılarak yeni bir environment oluşturulur
+ve aktive edilir.
+.. https://docs.conda.io/projects/conda/en/latest/userguide/tasks/manage-environments.html#creating-anenvironment-with-commands
+
+NOTE: Environment'ı *python >= 3.6* bir sürüm ile oluşturmalısınız.
+
+[start=3]
+. Anaconda prompt terminatorü içerisinden içeriğin indirilen klasörün
+içerisine gidilir. (*tuvis_object_detection.py* ile aynı konumda olmalısınız). 
+
+NOTE: Bu dökümanın kalanında bu klasörden *models_tool* olarak bahsedilecektir.
+
+[start=4]
+
+. Sırasıyla her bir modelin kendi klasörü altında yer alan .sh dosyaları çalıştırılarak istenilen modeller kurulur.
+.. *install_mrcnn.sh*
+.. *install_ssd.sh*
+
+. SSD için kullanılan Tensorflow Object Detection API  <<ref1,[3]>> kurulum adımlarını buradan takip edebilirsiniz. https://tensorflow-object-detection-api-tutorial.readthedocs.io/en/latest/install.html
+
+NOTE: tensorflow-gpu=1.15.3 versiyonunu kullanır. Tool içerisinde kullanılan mask rcnn implementasyonu <<ref1,[1]>> tensorflow-gpu>2 versiyonları ile uyumlu değildir. Ayrıca Retinanet implementasyonu içinse 2.0.0 sürümü kara listededir yani uyumsuzdur.
+
+==== Veri Hazırlama:
+
+. Veriler -öncelikle train ve test olmak üzere 2 gruba ayırılabilir.
+. Her iki grup için de images, annotations klasörleri oluşturulmalıdır.(test
+için ilk aşamada annotations klasörü boş kalabilir.)
+.. *images:* Görüntülerin herhangi bir klasör içinde olmadan direkt yer aldığı klasördür. 
+.. *annotation:* Pascal VOC formatında Annotation XML'lerinin,   herhangi bir klasör içinde olmadan direkt yer aldığı klasördür. 
+. *models_tool/dataset* içerisindeki yapıya uygun olarak klasörler
+yerleştirilir.
+. Son adım olarak *models_tool* klasörüne gidilirerek verilen komut istenilen model parametre olarak verilerek çalıştırılır:
+`python tuvis_object_detection.py <retinanet or mrcnn or SSD> build_dataset`
+
+==== Train:
+===== Retinanet:
+
+. *models_tool* klasörüne gidilir. 
+
+. Annotation ve image'lerin doğruluğunu kontrol etmek için komut:
+`python tuvis_object_detection.py retinanet debug`
+
+. Eğitimi başlatmak için gerekli komut: 
+
+----
+python tuvis_object_detection.py retinanet train --batch-size <1> 
+--steps <2> 
+--epochs <3>
+----
+<1> Sistem hafızası (RAM)'e bağlı bir parametredir verilerin kaçlı paketler halinde işleneceğini ifade eder. Sayı arttıkça RAM gereksinimi artar.
+
+<2> Her bir epoch'da kaç adet batch alınacağını ifade eder.
+
+<3> Veri üzerindeki toplam döngü sayısını ifade eder.
+
+NOTE: Veri üzerinde epoch'lar ile tam tekrarlar yaratmak için *steps=Veri(imaj) Sayısı/batch size* olacak şekilde ayarlamayı unutmayın. 
+
+Örneğin: 100 adet veriniz(imajınız) olsun. batch_size'ı 5 belirlediniz ve eğitim boyunca tüm veri üzerinde 30 tekrar yapmak istiyorsunuz: *steps = 20*, *epochs = 30*
+
+[start=4]
+. *Converting ve Evaluating:* Bu adımlar bu tool ile yapacağınız herhangi bir `python object_detection.py retinanet train` işlemi içerisinde otomatik yapılmaktadır. Ancak dilerseniz kendiniz daha sonra tekrar bunları çağırabilir ve kullanabilirsiniz:
+.. Converting: `python tuvis_object_detection.py retinanet convert`
+.. Evaluating: `python tuvis_object_detection.py retinanet evaluate`
+
+===== Mask Rcnn:
+. *models_tool* klasörüne gidilir. 
+
+. Eğitimi başlatmak için gerekli komut: 
+`python tuvis_object_detection.py mrcnn train`
+
+===== SSD:
+
+. *models_tool* klasörüne gidilir. 
+
+. Eğitimi başlatmak için gerekli komut: 
+`python tuvis_object_detection.py SSD train`
+
+. Eğitilecek modeli seçmek için `-m=` parametresi verilerek destekelenen modellerden birisi seçilebilir.
 
 
+==== Prediction:
+
+. *models_tool* klasörüne gidilir.
+
+. Prediction gerçekleştirmek için gerekli komut:
+`python tuvis_object_detection.py <retinanet or mrcnn or SSD> predict`
+
+NOTE: Çıktılar varsayılan olarak *models_tool/<retinanet or mrcnn or ssd>/outputs* içerisinde yer alır.
 
 
+==== References
+[[ref1]]
+[ 1 ] Mask R-CNN implementasyonu kaynak dosyaları *matterport/Mask_RCNN* deposundan alınarak, bu proje için düzenlemeler yapılarak kullanılmıştır. 
+https://github.com/matterport/Mask_RCNN[,role=external,window=blank]
 
+[[ref2]]
+[ 2 ] *install_retinanet.sh, build_dataset.py, predict.py* dosyaları verilen kaynaktan alınarak bu proje için düzenlemeler yapılarak kullanılmıştır. 
+https://github.com/kapil-varshney/esri_retinanet[,role=external,window=_blank]
+
+[[ref3]]
+[ 3 ] Tensorflow Object Detection API  
+https://github.com/tensorflow/models/tree/master/research/object_detection[,role=external,window=_blank]
 
 
 

@@ -1,0 +1,8 @@
+{
+"ssd_mobilenet_v2_320x320_coco17_tpu-8":"http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_mobilenet_v2_fpnlite_320x320_coco17_tpu-8.tar.gz",
+"efficientdet_d7_coco17_tpu-32":"http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d7_coco17_tpu-32.tar.gz",
+"centernet_resnet50_v1_fpn_512x512_coco17_tpu-8":"http://download.tensorflow.org/models/object_detection/tf2/20200711/centernet_resnet50_v1_fpn_512x512_coco17_tpu-8.tar.gz",
+"mask_rcnn_inception_resnet_v2_1024x1024_coco17_gpu-8":"http://download.tensorflow.org/models/object_detection/tf2/20200711/mask_rcnn_inception_resnet_v2_1024x1024_coco17_gpu-8.tar.gz",
+"ssd_resnet101_v1_fpn_1024x1024_coco17_tpu-8":"http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_resnet101_v1_fpn_1024x1024_coco17_tpu-8.tar.gz",
+"faster_rcnn_resnet152_v1_800x1333_coco17_gpu-8":"http://download.tensorflow.org/models/object_detection/tf2/20200711/faster_rcnn_resnet152_v1_800x1333_coco17_gpu-8.tar.gz"
+}
